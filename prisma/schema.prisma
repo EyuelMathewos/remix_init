@@ -9,3 +9,319 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model Company {
+  id            String          @id @default(uuid())
+  companyName   String
+  email         String
+  city          String
+  subCity       String
+  street        String
+  senderId      String          @default(uuid())
+  status        Boolean
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  AccessList    CompanyAccess[]
+  Campaign      Campaign[]
+  Subscription  Subscription[]
+  Program       Program[]
+  Message       MessageSent[]
+  Templates     Template[]
+  Invoice       Invoice[]
+  Payment       Payment[]
+  Report        Reports[]
+  PurchasedCode PurchasedCode[]
+  MessageQueue  MessageQueue[]
+  Vote          Vote[]
+}
+
+model CompanyAccess {
+  id        String  @default(uuid())
+  companyID String
+  userId    String
+  roleId    String
+  Company   Company @relation(fields: [companyID], references: [id])
+  User      User    @relation(fields: [userId], references: [id])
+  Role      Role    @relation(fields: [roleId], references: [id])
+
+  @@id([userId, companyID, roleId])
+}
+
+model CampaignGroup {
+  id            String          @id @default(uuid())
+  companyid     String
+  Name          String
+  campaignType  String
+  senderId      String
+  txtformat     String
+  MessageType   String
+  Date          DateTime        @default(now())
+  campaignGroup CampaignUsers[]
+  Campaign      Campaign?       @relation(fields: [campaignId], references: [id])
+  campaignId    String?
+}
+
+model CampaignUsers {
+  id            String                @id @default(uuid())
+  name          String
+  phoneNumber   String
+  groupId       String
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  campaignGroup CampaignGroup         @relation(fields: [groupId], references: [id])
+  programSub    ProgramSubscription[]
+}
+
+model ProgramSubscription {
+  id             String         @id @default(uuid())
+  campaignUserId String?
+  CodeId         String?
+  status         Boolean        @default(true)
+  CampaignUsers  CampaignUsers? @relation(fields: [campaignUserId], references: [id])
+  PurchasedCode  PurchasedCode? @relation(fields: [CodeId], references: [code])
+}
+
+model PurchasedCode {
+  id         String                @id @default(uuid())
+  companyId  String?
+  name       String?
+  code       String                @unique
+  Company    Company?              @relation(fields: [companyId], references: [id])
+  programSub ProgramSubscription[]
+}
+
+model Campaign {
+  id                  String          @id @default(uuid())
+  userId              String?
+  campaignId          String
+  companyId           String
+  name                String
+  Type                CampaignType
+  Message             String
+  status              CampaignStatus
+  schedule            Json
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  companyCampaign     Company         @relation(fields: [companyId], references: [id])
+  autoRespondCampaign AutoRespond[]
+  compainGroup        CampaignGroup[]
+  MessageSent         MessageSent[]
+  user                User?           @relation(fields: [userId], references: [id])
+  MessageQueue        MessageQueue[]
+}
+
+model Program {
+  id                String     @id @default(uuid())
+  name              String
+  Type              String
+  schedule          Json
+  companyId         String?
+  contentIdentifier String     @unique
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  Company           Company?   @relation(fields: [companyId], references: [id])
+  RecivedMessage    Recieved[]
+}
+
+model MessageQueue {
+  id         String    @id @default(uuid())
+  companyId  String?
+  campaignId String?
+  message    Json
+  status     String    @default("PENDING")
+  schedule   Json?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  Company    Company?  @relation(fields: [companyId], references: [id])
+  Campaign   Campaign? @relation(fields: [campaignId], references: [id])
+}
+
+model Recieved {
+  id                String   @id @default(uuid())
+  from              String
+  to                String
+  message           String
+  originConnector   String?
+  priority          Int?
+  coding            String?
+  validity          String?
+  createdAT         String
+  RecivedAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  contentIdentifier String?
+  Program           Program? @relation(fields: [contentIdentifier], references: [contentIdentifier])
+}
+
+model MessageSent {
+  id         String        @id @default(uuid())
+  companyId  String?
+  campaignId String?
+  from       String
+  to         String
+  message    String
+  createdAt  DateTime      @default(now())
+  Status     MessageStatus
+  updatedAt  DateTime      @updatedAt
+  Company    Company?      @relation(fields: [companyId], references: [id])
+  Report     Reports[]
+  Campaign   Campaign?     @relation(fields: [campaignId], references: [id])
+}
+
+model AutoRespond {
+  id                  String   @id @default(uuid())
+  campaignId          String
+  message             String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  autoRespondCampaign Campaign @relation(fields: [campaignId], references: [id])
+}
+
+model Invoice {
+  id        String        @id @default(uuid())
+  companyId String?
+  paidTo    String
+  number    String        @unique
+  amount    Float
+  status    InvoiceStatus @default(NOTPAID)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  Company   Company?      @relation(fields: [companyId], references: [id])
+  Payment   Payment[]
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  invoiceId      String?
+  companyId      String?
+  status         PaymentStatus
+  transctionName String?
+  amount         Float
+  detail         Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  Invoice        Invoice?      @relation(fields: [invoiceId], references: [id])
+  Company        Company?      @relation(fields: [companyId], references: [id])
+}
+
+model Reports {
+  id            String       @id @default(uuid())
+  messageSentId String?
+  companyId     String
+  sent          Int
+  Deliverd      Int
+  undeliverd    Int
+  Failed        Int
+  totalSms      Int
+  Company       Company      @relation(fields: [companyId], references: [id])
+  MessageSent   MessageSent? @relation(fields: [messageSentId], references: [id])
+}
+
+model Template {
+  id        String   @id @default(uuid())
+  companyId String?
+  name      String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Company   Company? @relation(fields: [companyId], references: [id])
+}
+
+model Subscription {
+  id            String  @id @default(uuid())
+  companyId     String
+  balance       Float
+  paymentPlan   String
+  paymentStatus String
+  Company       Company @relation(fields: [companyId], references: [id])
+}
+
+model Vote {
+  id                String   @id @default(uuid())
+  companyId         String?
+  codeId            String
+  contentIdentifier String   @unique
+  schedule          Json?
+  createAt          DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  Company           Company? @relation(fields: [companyId], references: [id])
+}
+
+model User {
+  id            String          @id @default(uuid())
+  email         String          @unique
+  name          String?
+  password      String
+  tokens        AccessToken[]
+  CompanyAccess CompanyAccess[]
+  Campaign      Campaign[]
+}
+
+model AccessToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String
+  createAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AccessList {
+  id         String       @id @default(uuid())
+  name       String       @unique
+  action     String
+  subject    String
+  conditions Json
+  fields     Json
+  createAt   DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  Permission Permission[]
+}
+
+model Role {
+  id            String          @id @default(uuid())
+  name          String
+  createdBy     String
+  createAt      DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  Permission    Permission[]
+  CompanyAccess CompanyAccess[]
+}
+
+model Permission {
+  id         String     @id @default(uuid())
+  accessId   String
+  roleId     String
+  AccessList AccessList @relation(fields: [accessId], references: [id])
+  Roles      Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+}
+
+enum CampaignType {
+  BULK
+  SINGLE
+}
+
+enum CampaignStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  SCHEDULE
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  UNDELIVERED
+  FAILED
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum InvoiceStatus {
+  PAID
+  NOTPAID
+}
