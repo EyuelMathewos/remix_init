@@ -21,7 +21,8 @@ model Company {
   status        Boolean
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
-  AccessList    CompanyAccess[]
+  CompanyAccess CompanyAccess[]
+  Permission    Permission[]
   Campaign      Campaign[]
   Subscription  Subscription[]
   Program       Program[]
@@ -37,19 +38,17 @@ model Company {
 
 model CompanyAccess {
   id        String  @default(uuid())
-  companyID String
+  companyId String
   userId    String
-  roleId    String
-  Company   Company @relation(fields: [companyID], references: [id])
+  Company   Company @relation(fields: [companyId], references: [id])
   User      User    @relation(fields: [userId], references: [id])
-  Role      Role    @relation(fields: [roleId], references: [id])
 
-  @@id([userId, companyID, roleId])
+  @@id([userId, companyId])
 }
 
 model CampaignGroup {
   id            String          @id @default(uuid())
-  companyid     String
+  companyId     String
   Name          String
   campaignType  String
   senderId      String
@@ -254,6 +253,16 @@ model User {
   tokens        AccessToken[]
   CompanyAccess CompanyAccess[]
   Campaign      Campaign[]
+  UserRole      UserRole[]
+}
+
+model UserRole {
+  User   User?  @relation(fields: [userId], references: [id])
+  userId String
+  Role   Role?  @relation(fields: [roleId], references: [id])
+  roleId String
+
+  @@id([userId, roleId])
 }
 
 model AccessToken {
@@ -278,21 +287,25 @@ model AccessList {
 }
 
 model Role {
-  id            String          @id @default(uuid())
-  name          String
-  createdBy     String
-  createAt      DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  Permission    Permission[]
-  CompanyAccess CompanyAccess[]
+  id         String       @id @default(uuid())
+  name       String
+  createdBy  String
+  createAt   DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  Permission Permission[]
+  UserRole   UserRole[]
 }
 
 model Permission {
-  id         String     @id @default(uuid())
-  accessId   String
-  roleId     String
-  AccessList AccessList @relation(fields: [accessId], references: [id])
-  Roles      Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId       String
+  accessListId String
+  companyId    String?
+  AccessList   AccessList? @relation(fields: [accessListId], references: [id])
+  Role         Role?       @relation(fields: [roleId], references: [id])
+  Company      Company?    @relation(fields: [companyId], references: [id])
+
+  @@id([roleId, accessListId])
+  @@unique([accessListId, companyId])
 }
 
 enum CampaignType {
